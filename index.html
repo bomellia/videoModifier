@@ -13,21 +13,17 @@ body {
   text-align:center;
   padding:20px;
 }
-
 video {
   max-width:100%;
   margin-top:20px;
   border-radius:8px;
 }
-
 .controls {
   margin-top:20px;
 }
-
 input[type=range] {
   width:80%;
 }
-
 button {
   margin-top:15px;
   padding:10px 20px;
@@ -38,13 +34,12 @@ button {
   border-radius:5px;
   cursor:pointer;
 }
-
 button:disabled {
   background:#555;
 }
-
 #progress {
   margin-top:10px;
+  min-height:20px;
 }
 </style>
 </head>
@@ -52,10 +47,10 @@ button:disabled {
 
 <h2>動画トリミング</h2>
 
-<input type="file" id="fileInput" accept="video/*" />
+<input type="file" id="fileInput" accept="video/*">
 <br>
 
-<video id="video" controls></video>
+<video id="video" controls playsinline></video>
 
 <div class="controls">
   <p>開始: <span id="startVal">0</span>s</p>
@@ -69,9 +64,9 @@ button:disabled {
 <p id="progress"></p>
 
 <a id="downloadLink" style="display:none;">ダウンロード</a>
-<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
 
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+<!-- ffmpeg UMD版（これだけ） -->
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
 
 <script>
 const { createFFmpeg, fetchFile } = FFmpeg;
@@ -80,7 +75,6 @@ const ffmpeg = createFFmpeg({
   log: true,
   corePath: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"
 });
-
 
 const fileInput = document.getElementById("fileInput");
 const video = document.getElementById("video");
@@ -94,11 +88,14 @@ const downloadLink = document.getElementById("downloadLink");
 
 let currentFile = null;
 
-fileInput.addEventListener("change", e => {
+fileInput.addEventListener("change", (e) => {
   currentFile = e.target.files[0];
   if (!currentFile) return;
 
-  video.src = URL.createObjectURL(currentFile);
+  const url = URL.createObjectURL(currentFile);
+  video.src = url;
+  video.load();
+
   video.onloadedmetadata = () => {
     const duration = video.duration;
 
@@ -110,6 +107,11 @@ fileInput.addEventListener("change", e => {
     endVal.textContent = duration.toFixed(2);
 
     trimBtn.disabled = false;
+  };
+
+  video.onerror = (err) => {
+    console.error("Video load error:", err);
+    alert("動画を読み込めません。コーデック非対応の可能性があります。");
   };
 });
 
@@ -130,43 +132,48 @@ endRange.addEventListener("input", () => {
 trimBtn.addEventListener("click", async () => {
   if (!currentFile) return;
 
-  progress.textContent = "FFmpegロード中...";
-  trimBtn.disabled = true;
+  try {
+    progress.textContent = "FFmpegロード中...";
+    trimBtn.disabled = true;
 
-  if (!ffmpeg.isLoaded()) {
-    await ffmpeg.load();
+    if (!ffmpeg.isLoaded()) {
+      await ffmpeg.load();
+    }
+
+    progress.textContent = "動画処理中...";
+
+    ffmpeg.FS("writeFile", "input.mp4", await fetchFile(currentFile));
+
+    const start = startRange.value;
+    const end = endRange.value;
+
+    await ffmpeg.run(
+      "-ss", start,
+      "-to", end,
+      "-i", "input.mp4",
+      "-c", "copy",
+      "output.mp4"
+    );
+
+    const data = ffmpeg.FS("readFile", "output.mp4");
+
+    const blob = new Blob([data.buffer], { type: "video/mp4" });
+    const url = URL.createObjectURL(blob);
+
+    downloadLink.href = url;
+    downloadLink.download = "trimmed.mp4";
+    downloadLink.style.display = "block";
+    downloadLink.textContent = "トリミング動画をダウンロード";
+
+    progress.textContent = "完了";
+  } catch (e) {
+    console.error(e);
+    progress.textContent = "エラー発生。Consoleを確認してください。";
   }
 
-  progress.textContent = "動画処理中...";
-
-  ffmpeg.FS("writeFile", "input.mp4", await fetchFile(currentFile));
-
-  const start = startRange.value;
-  const end = endRange.value;
-
-  await ffmpeg.run(
-    "-ss", start,
-    "-to", end,
-    "-i", "input.mp4",
-    "-c", "copy",
-    "output.mp4"
-  );
-
-  const data = ffmpeg.FS("readFile", "output.mp4");
-
-  const blob = new Blob([data.buffer], { type: "video/mp4" });
-  const url = URL.createObjectURL(blob);
-
-  downloadLink.href = url;
-  downloadLink.download = "trimmed.mp4";
-  downloadLink.style.display = "block";
-  downloadLink.textContent = "トリミング動画をダウンロード";
-
-  progress.textContent = "完了";
   trimBtn.disabled = false;
 });
 </script>
 
 </body>
 </html>
-
