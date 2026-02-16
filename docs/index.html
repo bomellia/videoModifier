@@ -4,16 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Video Trimmer</title>
+
+<style>
+body{
+  background:#111;
+  color:#eee;
+  font-family:sans-serif;
+  text-align:center;
+  padding:20px;
+}
+video{
+  max-width:100%;
+  margin-top:20px;
+}
+input[type=range]{
+  width:80%;
+}
+button{
+  margin-top:15px;
+  padding:10px 20px;
+  font-size:16px;
+}
+</style>
 </head>
 <body>
 
+<h2>動画トリミング</h2>
+
 <input type="file" id="fileInput" accept="video/*">
-<video id="video" controls style="max-width:100%"></video>
 <br>
-開始 <input type="range" id="start" step="0.1" value="0">
-終了 <input type="range" id="end" step="0.1" value="0">
-<br>
-<button id="trim">トリミング</button>
+<video id="video" controls playsinline></video>
+
+<p>
+開始: <span id="startVal">0</span>s<br>
+<input type="range" id="start" step="0.1" value="0">
+</p>
+
+<p>
+終了: <span id="endVal">0</span>s<br>
+<input type="range" id="end" step="0.1" value="0">
+</p>
+
+<button id="trim" disabled>トリミング</button>
 <p id="status"></p>
 <a id="download" style="display:none"></a>
 
@@ -27,25 +59,54 @@ const fileInput = document.getElementById("fileInput");
 const video = document.getElementById("video");
 const start = document.getElementById("start");
 const end = document.getElementById("end");
+const startVal = document.getElementById("startVal");
+const endVal = document.getElementById("endVal");
 const trimBtn = document.getElementById("trim");
 const status = document.getElementById("status");
 const download = document.getElementById("download");
 
-let file;
+let file = null;
+let ffmpegLoaded = false;
 
+/* 動画選択 */
 fileInput.onchange = (e) => {
   file = e.target.files[0];
+  if (!file) return;
+
   video.src = URL.createObjectURL(file);
 
   video.onloadedmetadata = () => {
     start.max = video.duration;
     end.max = video.duration;
     end.value = video.duration;
+
+    startVal.textContent = "0";
+    endVal.textContent = video.duration.toFixed(2);
+
+    trimBtn.disabled = false;
   };
 };
 
-trimBtn.onclick = async () => {
-  status.textContent = "ロード中...";
+/* スライダー表示更新 */
+start.oninput = () => {
+  if (+start.value >= +end.value) {
+    start.value = end.value - 0.1;
+  }
+  startVal.textContent = (+start.value).toFixed(2);
+};
+
+end.oninput = () => {
+  if (+end.value <= +start.value) {
+    end.value = +start.value + 0.1;
+  }
+  endVal.textContent = (+end.value).toFixed(2);
+};
+
+/* FFmpegロード（同一オリジン化） */
+async function loadFFmpeg(){
+  if (ffmpegLoaded) return;
+
+  status.textContent = "FFmpegロード中...";
 
   await ffmpeg.load({
     coreURL: await toBlobURL(
@@ -58,27 +119,45 @@ trimBtn.onclick = async () => {
     )
   });
 
-  status.textContent = "処理中...";
+  ffmpegLoaded = true;
+}
 
-  await ffmpeg.writeFile("input.mp4", await fetchFile(file));
+/* トリミング処理 */
+trimBtn.onclick = async () => {
+  if (!file) return;
 
-  await ffmpeg.exec([
-    "-ss", start.value,
-    "-to", end.value,
-    "-i", "input.mp4",
-    "-c", "copy",
-    "out.mp4"
-  ]);
+  trimBtn.disabled = true;
 
-  const data = await ffmpeg.readFile("out.mp4");
-  const blob = new Blob([data.buffer], { type: "video/mp4" });
+  try {
+    await loadFFmpeg();
 
-  download.href = URL.createObjectURL(blob);
-  download.download = "trimmed.mp4";
-  download.textContent = "ダウンロード";
-  download.style.display = "block";
+    status.textContent = "動画処理中...";
 
-  status.textContent = "完了";
+    await ffmpeg.writeFile("input.mp4", await fetchFile(file));
+
+    await ffmpeg.exec([
+      "-ss", start.value,
+      "-to", end.value,
+      "-i", "input.mp4",
+      "-c", "copy",
+      "out.mp4"
+    ]);
+
+    const data = await ffmpeg.readFile("out.mp4");
+    const blob = new Blob([data.buffer], { type: "video/mp4" });
+
+    download.href = URL.createObjectURL(blob);
+    download.download = "trimmed.mp4";
+    download.textContent = "ダウンロード";
+    download.style.display = "block";
+
+    status.textContent = "完了";
+  } catch (err) {
+    console.error(err);
+    status.textContent = "エラーが発生しました";
+  }
+
+  trimBtn.disabled = false;
 };
 </script>
 
