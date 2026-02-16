@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Video Trimmer</title>
+
+<style>
+body {
+  background:#111;
+  color:#eee;
+  font-family:sans-serif;
+  text-align:center;
+  padding:20px;
+}
+
+video {
+  max-width:100%;
+  margin-top:20px;
+  border-radius:8px;
+}
+
+.controls {
+  margin-top:20px;
+}
+
+input[type=range] {
+  width:80%;
+}
+
+button {
+  margin-top:15px;
+  padding:10px 20px;
+  font-size:16px;
+  background:#2a2;
+  color:white;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+
+button:disabled {
+  background:#555;
+}
+
+#progress {
+  margin-top:10px;
+}
+</style>
+</head>
+<body>
+
+<h2>動画トリミング</h2>
+
+<input type="file" id="fileInput" accept="video/*" />
+<br>
+
+<video id="video" controls></video>
+
+<div class="controls">
+  <p>開始: <span id="startVal">0</span>s</p>
+  <input type="range" id="startRange" min="0" step="0.1" value="0">
+
+  <p>終了: <span id="endVal">0</span>s</p>
+  <input type="range" id="endRange" min="0" step="0.1" value="0">
+</div>
+
+<button id="trimBtn" disabled>トリミング</button>
+<p id="progress"></p>
+
+<a id="downloadLink" style="display:none;">ダウンロード</a>
+
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+
+<script>
+const { createFFmpeg, fetchFile } = FFmpeg;
+const ffmpeg = createFFmpeg({ log: true });
+
+const fileInput = document.getElementById("fileInput");
+const video = document.getElementById("video");
+const startRange = document.getElementById("startRange");
+const endRange = document.getElementById("endRange");
+const startVal = document.getElementById("startVal");
+const endVal = document.getElementById("endVal");
+const trimBtn = document.getElementById("trimBtn");
+const progress = document.getElementById("progress");
+const downloadLink = document.getElementById("downloadLink");
+
+let currentFile = null;
+
+fileInput.addEventListener("change", e => {
+  currentFile = e.target.files[0];
+  if (!currentFile) return;
+
+  video.src = URL.createObjectURL(currentFile);
+  video.onloadedmetadata = () => {
+    const duration = video.duration;
+
+    startRange.max = duration;
+    endRange.max = duration;
+    endRange.value = duration;
+
+    startVal.textContent = "0";
+    endVal.textContent = duration.toFixed(2);
+
+    trimBtn.disabled = false;
+  };
+});
+
+startRange.addEventListener("input", () => {
+  if (+startRange.value >= +endRange.value) {
+    startRange.value = endRange.value - 0.1;
+  }
+  startVal.textContent = (+startRange.value).toFixed(2);
+});
+
+endRange.addEventListener("input", () => {
+  if (+endRange.value <= +startRange.value) {
+    endRange.value = +startRange.value + 0.1;
+  }
+  endVal.textContent = (+endRange.value).toFixed(2);
+});
+
+trimBtn.addEventListener("click", async () => {
+  if (!currentFile) return;
+
+  progress.textContent = "FFmpegロード中...";
+  trimBtn.disabled = true;
+
+  if (!ffmpeg.isLoaded()) {
+    await ffmpeg.load();
+  }
+
+  progress.textContent = "動画処理中...";
+
+  ffmpeg.FS("writeFile", "input.mp4", await fetchFile(currentFile));
+
+  const start = startRange.value;
+  const end = endRange.value;
+
+  await ffmpeg.run(
+    "-ss", start,
+    "-to", end,
+    "-i", "input.mp4",
+    "-c", "copy",
+    "output.mp4"
+  );
+
+  const data = ffmpeg.FS("readFile", "output.mp4");
+
+  const blob = new Blob([data.buffer], { type: "video/mp4" });
+  const url = URL.createObjectURL(blob);
+
+  downloadLink.href = url;
+  downloadLink.download = "trimmed.mp4";
+  downloadLink.style.display = "block";
+  downloadLink.textContent = "トリミング動画をダウンロード";
+
+  progress.textContent = "完了";
+  trimBtn.disabled = false;
+});
+</script>
+
+</body>
+</html>
+
