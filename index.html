@@ -68,12 +68,14 @@ button:disabled {
 <!-- ffmpeg UMD版（これだけ） -->
 <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
 
-<script>
-const { createFFmpeg, fetchFile } = FFmpeg;
+<script type="module">
+import { createFFmpeg, fetchFile } from 
+"https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/esm/index.js";
 
 const ffmpeg = createFFmpeg({
   log: true,
-  corePath: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"
+  corePath:
+  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js"
 });
 
 const fileInput = document.getElementById("fileInput");
@@ -92,26 +94,17 @@ fileInput.addEventListener("change", (e) => {
   currentFile = e.target.files[0];
   if (!currentFile) return;
 
-  const url = URL.createObjectURL(currentFile);
-  video.src = url;
+  video.src = URL.createObjectURL(currentFile);
   video.load();
 
   video.onloadedmetadata = () => {
     const duration = video.duration;
-
     startRange.max = duration;
     endRange.max = duration;
     endRange.value = duration;
-
     startVal.textContent = "0";
     endVal.textContent = duration.toFixed(2);
-
     trimBtn.disabled = false;
-  };
-
-  video.onerror = (err) => {
-    console.error("Video load error:", err);
-    alert("動画を読み込めません。コーデック非対応の可能性があります。");
   };
 });
 
@@ -144,19 +137,15 @@ trimBtn.addEventListener("click", async () => {
 
     ffmpeg.FS("writeFile", "input.mp4", await fetchFile(currentFile));
 
-    const start = startRange.value;
-    const end = endRange.value;
-
     await ffmpeg.run(
-      "-ss", start,
-      "-to", end,
+      "-ss", startRange.value,
+      "-to", endRange.value,
       "-i", "input.mp4",
       "-c", "copy",
       "output.mp4"
     );
 
     const data = ffmpeg.FS("readFile", "output.mp4");
-
     const blob = new Blob([data.buffer], { type: "video/mp4" });
     const url = URL.createObjectURL(blob);
 
@@ -166,14 +155,15 @@ trimBtn.addEventListener("click", async () => {
     downloadLink.textContent = "トリミング動画をダウンロード";
 
     progress.textContent = "完了";
-  } catch (e) {
-    console.error(e);
-    progress.textContent = "エラー発生。Consoleを確認してください。";
+  } catch (err) {
+    console.error(err);
+    progress.textContent = "エラー発生。Console確認。";
   }
 
   trimBtn.disabled = false;
 });
 </script>
+
 
 </body>
 </html>
