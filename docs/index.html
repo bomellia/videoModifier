@@ -1,72 +1,85 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Video Trimmer</title>
-
-<style>
-body {
-  background:#111;
-  color:#eee;
-  font-family:sans-serif;
-  text-align:center;
-  padding:20px;
-}
-video {
-  max-width:100%;
-  margin-top:20px;
-  border-radius:8px;
-}
-.controls {
-  margin-top:20px;
-}
-input[type=range] {
-  width:80%;
-}
-button {
-  margin-top:15px;
-  padding:10px 20px;
-  font-size:16px;
-  background:#2a2;
-  color:white;
-  border:none;
-  border-radius:5px;
-  cursor:pointer;
-}
-button:disabled {
-  background:#555;
-}
-#progress {
-  margin-top:10px;
-  min-height:20px;
-}
-</style>
 </head>
 <body>
 
-<h2>動画トリミング</h2>
-
 <input type="file" id="fileInput" accept="video/*">
+<video id="video" controls style="max-width:100%"></video>
 <br>
+開始 <input type="range" id="start" step="0.1" value="0">
+終了 <input type="range" id="end" step="0.1" value="0">
+<br>
+<button id="trim">トリミング</button>
+<p id="status"></p>
+<a id="download" style="display:none"></a>
 
-<video id="video" controls playsinline></video>
+<script type="module">
+import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/+esm";
+import { fetchFile, toBlobURL } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/+esm";
 
-<div class="controls">
-  <p>開始: <span id="startVal">0</span>s</p>
-  <input type="range" id="startRange" min="0" step="0.1" value="0">
+const ffmpeg = new FFmpeg({ log: true });
 
-  <p>終了: <span id="endVal">0</span>s</p>
-  <input type="range" id="endRange" min="0" step="0.1" value="0">
-</div>
+const fileInput = document.getElementById("fileInput");
+const video = document.getElementById("video");
+const start = document.getElementById("start");
+const end = document.getElementById("end");
+const trimBtn = document.getElementById("trim");
+const status = document.getElementById("status");
+const download = document.getElementById("download");
 
-<button id="trimBtn" disabled>トリミング</button>
-<p id="progress"></p>
+let file;
 
-<a id="downloadLink" style="display:none;">ダウンロード</a>
+fileInput.onchange = (e) => {
+  file = e.target.files[0];
+  video.src = URL.createObjectURL(file);
 
-<!-- FFmpeg WASM版 -->
-<script type="module" src="index.js">
+  video.onloadedmetadata = () => {
+    start.max = video.duration;
+    end.max = video.duration;
+    end.value = video.duration;
+  };
+};
+
+trimBtn.onclick = async () => {
+  status.textContent = "ロード中...";
+
+  await ffmpeg.load({
+    coreURL: await toBlobURL(
+      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js",
+      "text/javascript"
+    ),
+    wasmURL: await toBlobURL(
+      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm",
+      "application/wasm"
+    )
+  });
+
+  status.textContent = "処理中...";
+
+  await ffmpeg.writeFile("input.mp4", await fetchFile(file));
+
+  await ffmpeg.exec([
+    "-ss", start.value,
+    "-to", end.value,
+    "-i", "input.mp4",
+    "-c", "copy",
+    "out.mp4"
+  ]);
+
+  const data = await ffmpeg.readFile("out.mp4");
+  const blob = new Blob([data.buffer], { type: "video/mp4" });
+
+  download.href = URL.createObjectURL(blob);
+  download.download = "trimmed.mp4";
+  download.textContent = "ダウンロード";
+  download.style.display = "block";
+
+  status.textContent = "完了";
+};
 </script>
 
 </body>
