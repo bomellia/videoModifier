@@ -8,28 +8,50 @@
 </head>
 <body>
 
-  <h2>動画トリミング</h2>
+  <div class="container">
+    <h2>✂️ Video Trimmer</h2>
 
-  <input type="file" id="fileInput" accept="video/*">
-  <br>
+    <!-- ファイル選択セクション -->
+    <div class="section">
+      <div class="file-input-wrapper">
+        <label for="fileInput" class="file-input-label">📁 動画を選択</label>
+        <input type="file" id="fileInput" accept="video/*">
+        <span class="file-name" id="fileName"></span>
+      </div>
+    </div>
 
-  <div class="video-container">
-    <video id="video" controls playsinline></video>
+    <!-- ビデオプレイヤーセクション -->
+    <div class="section">
+      <div class="video-container">
+        <video id="video" controls playsinline></video>
+      </div>
+    </div>
+
+    <!-- 開始時間セクション -->
+    <div class="control-section">
+      <div class="control-label">
+        <span>⏱️ 開始時間</span>
+        <span class="time-value"><span id="startVal">0</span>s</span>
+      </div>
+      <input type="range" id="start" step="0.1" value="0" min="0">
+    </div>
+
+    <!-- 終了時間セクション -->
+    <div class="control-section">
+      <div class="control-label">
+        <span>⏱️ 終了時間</span>
+        <span class="time-value"><span id="endVal">0</span>s</span>
+      </div>
+      <input type="range" id="end" step="0.1" value="0" min="0">
+    </div>
+
+    <!-- 実行・ダウンロードセクション -->
+    <div class="section">
+      <button id="trim" disabled>🎬 トリミング実行</button>
+      <p id="status"></p>
+      <a id="download" style="display:none">⬇️ ダウンロード</a>
+    </div>
   </div>
-
-  <p>
-    開始: <span id="startVal">0</span>s<br>
-    <input type="range" id="start" step="0.1" value="0">
-  </p>
-
-  <p>
-    終了: <span id="endVal">0</span>s<br>
-    <input type="range" id="end" step="0.1" value="0">
-  </p>
-
-  <button id="trim" disabled>トリミング</button>
-  <p id="status"></p>
-  <a id="download" style="display:none"></a>
 
   <script type="module" src="script.js"></script>
 
