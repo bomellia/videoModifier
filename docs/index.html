@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Video Trimmer</title>
+  <title>Video Converter - 動画変換ツール</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <div class="container">
-    <h2>✂️ Video Trimmer</h2>
+    <h2>✂️ Video Converter</h2>
 
     <!-- ファイル選択セクション -->
     <div class="section">
@@ -27,27 +27,87 @@
       </div>
     </div>
 
-    <!-- 開始時間セクション -->
+    <!-- トリミング設定セクション -->
     <div class="control-section">
-      <div class="control-label">
-        <span>⏱️ 開始時間</span>
-        <span class="time-value"><span id="startVal">0</span>s</span>
+      <h3>✂️ トリミング設定</h3>
+      <div class="time-range-controls">
+        <div class="control-label">
+          <span>⏱️ 開始時間</span>
+          <span class="time-value"><span id="startVal">0:00:00</span></span>
+        </div>
+        <input type="range" id="start" step="0.1" value="0" min="0">
+        
+        <div class="control-label">
+          <span>⏱️ 終了時間</span>
+          <span class="time-value"><span id="endVal">0:00:00</span></span>
+        </div>
+        <input type="range" id="end" step="0.1" value="0" min="0">
       </div>
-      <input type="range" id="start" step="0.1" value="0" min="0">
     </div>
 
-    <!-- 終了時間セクション -->
+    <!-- フレームレート設定セクション -->
     <div class="control-section">
+      <h3>🎞️ フレームレート設定</h3>
       <div class="control-label">
-        <span>⏱️ 終了時間</span>
-        <span class="time-value"><span id="endVal">0</span>s</span>
+        <span>フレームレート (fps)</span>
+        <span class="time-value" id="fpsDisplay">元動画のまま</span>
       </div>
-      <input type="range" id="end" step="0.1" value="0" min="0">
+      <div class="control-row">
+        <div class="control-group">
+          <label for="fpsEnable">
+            <input type="checkbox" id="fpsEnable">
+            フレームレート変更
+          </label>
+        </div>
+        <div class="control-group">
+          <input type="number" id="fpsValue" placeholder="FPS" min="1" max="120" step="1" disabled value="30">
+        </div>
+      </div>
+      <p class="help-text">元動画より高いフレームレートを指定すると、線形補完で中間フレームを生成します</p>
+    </div>
+
+    <!-- 倍速設定セクション -->
+    <div class="control-section">
+      <h3>⚡ 倍速設定</h3>
+      <div class="control-label">
+        <span>再生速度</span>
+        <span class="time-value" id="speedDisplay">1.0x</span>
+      </div>
+      <input type="range" id="speed" step="0.1" value="1" min="0.25" max="2">
+      <div class="speed-presets">
+        <button class="preset-btn" data-speed="0.5">0.5x</button>
+        <button class="preset-btn" data-speed="0.75">0.75x</button>
+        <button class="preset-btn" data-speed="1" selected>1.0x</button>
+        <button class="preset-btn" data-speed="1.25">1.25x</button>
+        <button class="preset-btn" data-speed="1.5">1.5x</button>
+        <button class="preset-btn" data-speed="2">2.0x</button>
+      </div>
+    </div>
+
+    <!-- オーディオ設定セクション -->
+    <div class="control-section">
+      <h3>🔊 オーディオ設定</h3>
+      <div class="audio-controls">
+        <div class="control-group">
+          <label for="fadeInEnable">
+            <input type="checkbox" id="fadeInEnable">
+            フェードイン
+          </label>
+          <input type="number" id="fadeInDuration" placeholder="秒" min="0.1" max="10" step="0.1" disabled value="1">
+        </div>
+        <div class="control-group">
+          <label for="fadeOutEnable">
+            <input type="checkbox" id="fadeOutEnable">
+            フェードアウト
+          </label>
+          <input type="number" id="fadeOutDuration" placeholder="秒" min="0.1" max="10" step="0.1" disabled value="1">
+        </div>
+      </div>
     </div>
 
     <!-- 実行・ダウンロードセクション -->
     <div class="section">
-      <button id="trim" disabled>🎬 トリミング実行</button>
+      <button id="convert" disabled>🎬 変換実行</button>
       <p id="status"></p>
       <a id="download" style="display:none">⬇️ ダウンロード</a>
     </div>
