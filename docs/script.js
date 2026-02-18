@@ -182,88 +182,124 @@ convertBtn.onclick = async () => {
     status.textContent = "動画処理中...";
     status.classList.add("loading");
 
-    // FFmpegコマンドの構築
-    const args = [
-      "-ss", start.value.toString(),
-      "-to", end.value.toString(),
-      "-i", "input.mp4"
-    ];
+    await ffmpeg.writeFile("input.mp4", await fetchFile(file));
 
-    // ビデオフィルタの構築
+    const startTime = parseFloat(start.value);
+    const endTime = parseFloat(end.value);
+    const duration = endTime - startTime;
+
+    /* -------------------- */
+    /* フィルタ構築 */
+    /* -------------------- */
     let videoFilters = [];
     let audioFilters = [];
 
-    // フレームレート変更
     if (fpsEnable.checked) {
-      const fps = fpsValue.value;
-      videoFilters.push(`fps=${fps}`);
+      videoFilters.push(`fps=${fpsValue.value}`);
     }
 
-    // 倍速変更
     const speedValue = parseFloat(speed.value);
     if (speedValue !== 1) {
       videoFilters.push(`setpts=PTS/${speedValue}`);
     }
 
-    // フェードイン・アウト
-    if (fadeInEnable.checked || fadeOutEnable.checked) {
-      if (fadeInEnable.checked) {
-        const fadeInDur = parseFloat(fadeInDuration.value);
-        audioFilters.push(`afade=t=in:st=0:d=${fadeInDur}`);
-      }
-
-      if (fadeOutEnable.checked) {
-        const fadeOutDur = parseFloat(fadeOutDuration.value);
-        const startTime = Math.max(0, (end.value - start.value) - fadeOutDur);
-        audioFilters.push(`afade=t=out:st=${startTime}:d=${fadeOutDur}`);
-      }
+    if (fadeInEnable.checked) {
+      audioFilters.push(`afade=t=in:st=0:d=${fadeInDuration.value}`);
     }
 
-    // 倍速のオーディオ処理
+    if (fadeOutEnable.checked) {
+      const fadeOutDur = parseFloat(fadeOutDuration.value);
+      const fadeStart = Math.max(0, duration - fadeOutDur);
+      audioFilters.push(`afade=t=out:st=${fadeStart}:d=${fadeOutDur}`);
+    }
+
     if (speedValue !== 1) {
-      audioFilters.push(`atempo=${speedValue}`);
+      // atempo分解（2倍以上対応）
+      let s = speedValue;
+      while (s > 2.0) {
+        audioFilters.push("atempo=2.0");
+        s /= 2.0;
+      }
+      audioFilters.push(`atempo=${s}`);
     }
 
-    // フィルタが何も指定されていない場合は、高速コピーモード
     const hasFilters = videoFilters.length > 0 || audioFilters.length > 0;
 
-    if (videoFilters.length > 0) {
-      args.push("-vf", videoFilters.join(","));
-    }
+    /* ============================ */
+    /* ① フィルタなし → 超高速トリム */
+    /* ============================ */
+    if (!hasFilters) {
 
-    if (audioFilters.length > 0) {
-      args.push("-af", audioFilters.join(","));
-    }
+      await ffmpeg.exec([
+        "-ss", startTime.toString(),
+        "-t", duration.toString(),
+        "-i", "input.mp4",
+        "-map", "0",
+        "-c", "copy",
+        "-avoid_negative_ts", "1",
+        "-movflags", "+faststart",
+        "out.mp4"
+      ]);
 
-    // コーデック設定 - フィルタがなければコピー（高速）、あればエンコード
-    if (hasFilters) {
-      args.push("-c:v", "libx264", "-preset", "fast", "-c:a", "aac");
     } else {
-      args.push("-c", "copy");
+
+      /* ============================ */
+      /* ② まず高速トリム */
+      /* ============================ */
+      await ffmpeg.exec([
+        "-ss", startTime.toString(),
+        "-t", duration.toString(),
+        "-i", "input.mp4",
+        "-c", "copy",
+        "trim.mp4"
+      ]);
+
+      /* ============================ */
+      /* ③ 必要部分のみ再エンコード */
+      /* ============================ */
+      let args = ["-i", "trim.mp4"];
+
+      if (videoFilters.length > 0) {
+        args.push("-vf", videoFilters.join(","));
+      }
+
+      if (audioFilters.length > 0) {
+        args.push("-af", audioFilters.join(","));
+      }
+
+      args.push(
+        "-c:v", "libx264",
+        "-preset", "ultrafast",   // ★最重要
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-movflags", "+faststart",
+        "out.mp4"
+      );
+
+      await ffmpeg.exec(args);
+
+      await ffmpeg.deleteFile("trim.mp4");
     }
-
-    args.push("out.mp4");
-
-    args.push("out.mp4");
-
-    await ffmpeg.writeFile("input.mp4", await fetchFile(file));
-    await ffmpeg.exec(args);
 
     const data = await ffmpeg.readFile("out.mp4");
     const blob = new Blob([data.buffer], { type: "video/mp4" });
 
     download.href = URL.createObjectURL(blob);
     download.download = "converted.mp4";
-    download.textContent = "⬇️ ダウンロード";
+    download.textContent = "ダウンロード";
     download.style.display = "inline-block";
 
-    status.textContent = "✓ 完了";
+    status.textContent = "完了";
     status.classList.remove("loading");
     status.classList.add("success");
-    hasChanges = false;
+
+    await ffmpeg.deleteFile("input.mp4");
+    await ffmpeg.deleteFile("out.mp4");
+
   } catch (err) {
     console.error(err);
-    status.textContent = "✕ エラーが発生しました";
+    status.textContent = "エラーが発生しました";
     status.classList.remove("loading");
     status.classList.add("error");
   }
