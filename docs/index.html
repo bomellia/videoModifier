@@ -109,14 +109,8 @@ async function loadFFmpeg(){
   status.textContent = "FFmpegロード中...";
 
   await ffmpeg.load({
-    coreURL: await toBlobURL(
-      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js",
-      "text/javascript"
-    ),
-    wasmURL: await toBlobURL(
-      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm",
-      "application/wasm"
-    )
+    coreURL: './lib/ffmpeg-core.js',
+    wasmURL: './lib/ffmpeg-core.wasm'
   });
 
   ffmpegLoaded = true;
