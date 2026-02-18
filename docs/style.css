@@ -181,6 +181,39 @@ input[type="range"]::-moz-range-track {
   border: none;
 }
 
+.rotate-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.rotate-btn {
+  flex: 1;
+  min-width: 80px;
+  padding: 10px 16px;
+  background: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.rotate-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.rotate-btn.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+}
+
 button {
   margin-top: 15px;
   padding: 14px 32px;

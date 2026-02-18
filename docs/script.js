@@ -10,12 +10,23 @@ const start = document.getElementById("start");
 const end = document.getElementById("end");
 const startVal = document.getElementById("startVal");
 const endVal = document.getElementById("endVal");
+const rotateButtons = document.querySelectorAll(".rotate-btn");
+const rotateDisplay = document.getElementById("rotateDisplay");
 const trimBtn = document.getElementById("trim");
 const status = document.getElementById("status");
 const download = document.getElementById("download");
 
 let file = null;
 let ffmpegLoaded = false;
+let rotate = 0; // 0: なし, 1: 90°, 2: 180°, 3: 270°
+
+// 秒を "mm:ss:ms" 形式に変換
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 100);
+  return `${mins}:${secs.toString().padStart(2, "0")}:${ms.toString().padStart(2, "0")}`;
+}
 
 /* 動画選択 */
 fileInput.onchange = (e) => {
@@ -44,15 +55,30 @@ start.oninput = () => {
   if (+start.value >= +end.value) {
     start.value = end.value - 0.1;
   }
-  startVal.textContent = (+start.value).toFixed(2);
+  startVal.textContent = formatTime(+start.value);
 };
 
 end.oninput = () => {
   if (+end.value <= +start.value) {
     end.value = +start.value + 0.1;
   }
-  endVal.textContent = (+end.value).toFixed(2);
+  endVal.textContent = formatTime(+end.value);
 };
+
+/* 回転設定 */
+rotateButtons.forEach((btn) => {
+  btn.onclick = () => {
+    rotate = parseInt(btn.dataset.rotate);
+    rotateButtons.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    
+    const rotateValues = ["なし", "90°", "180°", "270°"];
+    rotateDisplay.textContent = rotateValues[rotate];
+  };
+});
+
+// 初期状態で最初のボタンをアクティブに
+rotateButtons[0].classList.add("active");
 
 /* FFmpegロード */
 async function loadFFmpeg() {
@@ -85,13 +111,23 @@ trimBtn.onclick = async () => {
 
     await ffmpeg.writeFile("input.mp4", await fetchFile(file));
 
-    await ffmpeg.exec([
+    const args = [
       "-ss", start.value,
       "-to", end.value,
-      "-i", "input.mp4",
-      "-c", "copy",
-      "out.mp4"
-    ]);
+      "-i", "input.mp4"
+    ];
+
+    // 回転フィルタを追加
+    if (rotate > 0) {
+      args.push("-vf", `rotate=${rotate * 90 * 3.14159265359 / 180}`);
+      args.push("-c:v", "libx264", "-preset", "fast", "-c:a", "aac");
+    } else {
+      args.push("-c", "copy");
+    }
+
+    args.push("out.mp4");
+
+    await ffmpeg.exec(args);
 
     const data = await ffmpeg.readFile("out.mp4");
     const blob = new Blob([data.buffer], { type: "video/mp4" });
