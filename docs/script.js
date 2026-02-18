@@ -119,8 +119,8 @@ trimBtn.onclick = async () => {
 
     // 回転フィルタを追加
     if (rotate > 0) {
-      args.push("-vf", `rotate=${rotate * 90 * 3.14159265359 / 180}`);
-      args.push("-c:v", "libx264", "-preset", "fast", "-c:a", "aac");
+      args.push("-c", "copy");
+        args.push("-metadata:s:v", `rotate=${rotate * 90}`);
     } else {
       args.push("-c", "copy");
     }
