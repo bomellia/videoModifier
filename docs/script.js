@@ -191,6 +191,7 @@ convertBtn.onclick = async () => {
 
     // ビデオフィルタの構築
     let videoFilters = [];
+    let audioFilters = [];
 
     // フレームレート変更
     if (fpsEnable.checked) {
@@ -204,28 +205,18 @@ convertBtn.onclick = async () => {
       videoFilters.push(`setpts=PTS/${speedValue}`);
     }
 
-    if (videoFilters.length > 0) {
-      args.push("-vf", videoFilters.join(","));
-    }
-
-    // オーディオフィルタの構築
-    let audioFilters = [];
-
+    // フェードイン・アウト
     if (fadeInEnable.checked || fadeOutEnable.checked) {
-      let afadeFilters = [];
-      
       if (fadeInEnable.checked) {
         const fadeInDur = parseFloat(fadeInDuration.value);
-        afadeFilters.push(`afade=t=in:st=0:d=${fadeInDur}`);
+        audioFilters.push(`afade=t=in:st=0:d=${fadeInDur}`);
       }
 
       if (fadeOutEnable.checked) {
         const fadeOutDur = parseFloat(fadeOutDuration.value);
         const startTime = Math.max(0, (end.value - start.value) - fadeOutDur);
-        afadeFilters.push(`afade=t=out:st=${startTime}:d=${fadeOutDur}`);
+        audioFilters.push(`afade=t=out:st=${startTime}:d=${fadeOutDur}`);
       }
-
-      audioFilters = afadeFilters;
     }
 
     // 倍速のオーディオ処理
@@ -233,12 +224,27 @@ convertBtn.onclick = async () => {
       audioFilters.push(`atempo=${speedValue}`);
     }
 
+    // フィルタが何も指定されていない場合は、高速コピーモード
+    const hasFilters = videoFilters.length > 0 || audioFilters.length > 0;
+
+    if (videoFilters.length > 0) {
+      args.push("-vf", videoFilters.join(","));
+    }
+
     if (audioFilters.length > 0) {
       args.push("-af", audioFilters.join(","));
     }
 
-    // 出力設定
-    args.push("-c:v", "libx264", "-c:a", "aac", "out.mp4");
+    // コーデック設定 - フィルタがなければコピー（高速）、あればエンコード
+    if (hasFilters) {
+      args.push("-c:v", "libx264", "-preset", "fast", "-c:a", "aac");
+    } else {
+      args.push("-c", "copy");
+    }
+
+    args.push("out.mp4");
+
+    args.push("out.mp4");
 
     await ffmpeg.writeFile("input.mp4", await fetchFile(file));
     await ffmpeg.exec(args);
