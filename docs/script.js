@@ -1,5 +1,5 @@
 import { FFmpeg } from "./lib/index.js";
-import { fetchFile } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/+esm";
+import { fetchFile } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js";
 
 const ffmpeg = new FFmpeg({ log: true });
 
