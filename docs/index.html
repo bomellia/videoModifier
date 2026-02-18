@@ -109,9 +109,9 @@ async function loadFFmpeg(){
   status.textContent = "FFmpegロード中...";
 
   await ffmpeg.load({
-    classWorkerURL: './lib/worker.js',
-    coreURL: './lib/ffmpeg-core.js',
-    wasmURL: './lib/ffmpeg-core.wasm'
+    classWorkerURL: new URL('./lib/worker.js', import.meta.url).href,
+    coreURL: new URL('./lib/ffmpeg-core.js', import.meta.url).href,
+    wasmURL: new URL('./lib/ffmpeg-core.wasm', import.meta.url).href
   });
 
   ffmpegLoaded = true;
