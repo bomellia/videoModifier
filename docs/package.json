@@ -1,4 +1,9 @@
 {
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-isolation=none ../tests/editor.test.mjs",
+    "test:integration": "node ../tests/export.integration.mjs"
+  },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2"

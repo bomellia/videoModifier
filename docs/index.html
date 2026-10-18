@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Video Trimmer</title>
+  <title>Video Trimmer — カット・部分倍速</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <div class="container">
     <h2>✂️ Video Trimmer</h2>
+    <p class="intro">残す区間を分割して、カット・部分倍速。動画はこの端末内で処理します。</p>
 
     <!-- ファイル選択セクション -->
     <div class="section">
@@ -25,6 +26,18 @@
       <div class="video-container">
         <video id="video" controls playsinline></video>
       </div>
+      <div class="toolbar">
+        <button id="split" disabled>再生位置で分割</button>
+        <button id="preview" disabled>編集結果をプレビュー</button>
+      </div>
+      <p class="hint">分割・カット位置は、再圧縮せず切り出せる位置に自動調整します。</p>
+    </div>
+
+    <div class="section">
+      <div class="section-heading"><h3>残す区間</h3><button id="add" disabled>削除した区間を戻す</button></div>
+      <div id="segments" class="segments"></div>
+      <p id="summary" class="hint">動画を選択してください。</p>
+      <p class="hint">区間を選んで下の時間・速度を調整します。不要な区間は「削除」でカットできます。</p>
     </div>
 
     <!-- 開始時間セクション -->
@@ -33,7 +46,7 @@
         <span>⏱️ 開始時間</span>
         <span class="time-value"><span id="startVal">0:00.00</span></span>
       </div>
-      <input type="range" id="start" step="0.1" value="0" min="0">
+      <input type="range" id="start" step="any" value="0" min="0" disabled aria-label="選択区間の開始時間">
     </div>
 
     <!-- 終了時間セクション -->
@@ -42,7 +55,28 @@
         <span>⏱️ 終了時間</span>
         <span class="time-value"><span id="endVal">0:00.00</span></span>
       </div>
-      <input type="range" id="end" step="0.1" value="0" min="0">
+      <input type="range" id="end" step="any" value="0" min="0" disabled aria-label="選択区間の終了時間">
+    </div>
+
+    <div class="control-section">
+      <label for="speed">選択区間の再生速度</label>
+      <select id="speed" disabled>
+        <option value="0.5">0.5倍</option><option value="1" selected>通常（1倍）</option>
+        <option value="1.5">1.5倍</option><option value="2">2倍</option>
+        <option value="3">3倍</option><option value="4">4倍</option>
+        <option value="5">5倍</option><option value="6">6倍</option>
+        <option value="7">7倍</option><option value="8">8倍</option>
+        <option value="9">9倍</option><option value="10">10倍</option>
+      </select>
+      <p class="hint">倍速でも映像を再圧縮しません。高倍率では再生負荷が増える場合があります。</p>
+    </div>
+    <div class="control-section">
+      <label for="audio">書き出す音声</label>
+      <select id="audio" disabled>
+        <option value="keep">音声あり（倍速時も声の高さを維持）</option>
+        <option value="mute">音声なし</option>
+      </select>
+      <p id="audioHint" class="hint">音声付きの倍速では、音声の変換時間が加わります。</p>
     </div>
 
     <!-- 回転設定セクション -->
@@ -61,9 +95,9 @@
 
     <!-- 実行・ダウンロードセクション -->
     <div class="section">
-      <button id="trim" disabled>🎬 トリミング実行</button>
-      <p id="status"></p>
-      <a id="download" style="display:none">⬇️ ダウンロード</a>
+      <button id="trim" disabled>🎬 高速書き出し</button>
+      <p id="status" role="status" aria-live="polite"></p>
+      <a id="download" hidden>⬇️ ダウンロード</a>
     </div>
   </div>
 
